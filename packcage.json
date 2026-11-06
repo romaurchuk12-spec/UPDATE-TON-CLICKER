@@ -1,0 +1,13 @@
+
+{
+  "name": "roma-game-server",
+  "version": "1.0.0",
+  "description": "TON Clicker server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
