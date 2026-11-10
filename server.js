@@ -182,9 +182,7 @@ function mCancel(b){
 // ===== ПРОМОКОДЫ =====
 // код (в нижнем регистре) -> сколько TON даёт. Каждый код одноразовый для каждого игрока. Чтобы добавить новый, допишите строку.
 const PROMOS={
-  firstwatch:100,
   click:50,
-  global:40,
 };
 function mPromo(b){
   const id=mAuth(b);if(!id)return null;const me=P[id];
