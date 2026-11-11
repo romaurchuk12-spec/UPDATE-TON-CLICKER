@@ -112,7 +112,7 @@ function boxPush(id,e){(M.inbox[id]||(M.inbox[id]=[])).push(e);mdirty=true}
 function ackBox(id,me,ack){
   const box=M.inbox[id];if(!box||!Array.isArray(ack)||!ack.length)return;
   const set=new Set(ack.slice(0,200).map(String));
-  const left=box.filter(e=>{if(!set.has(e.k))return true;if(e.t==="sold"||e.t==="promo")me.bal+=e.amt;return false});
+  const left=box.filter(e=>{if(!set.has(e.k))return true;if(e.t==="sold"||e.t==="promo"||e.t==="wwin")me.bal+=e.amt;return false});
   if(left.length)M.inbox[id]=left;else delete M.inbox[id];
   mdirty=dirty=true;
 }
@@ -195,7 +195,60 @@ function mPromo(b){
   mdirty=dirty=true;
   return{ok:1,amt:PROMOS[c],inbox:boxOf(id)};
 }
-const MROUTES={"/api/promo":mPromo,"/api/market/lots":mLots,"/api/market/list":mList,"/api/market/buy":mBuy,"/api/market/cancel":mCancel};
+// ===== ОНЛАЙН КОЛЕСО =====
+// Одна общая комната. Первая ставка запускает таймер WAIT мс, потом колесо крутится SPIN мс. Победитель случайный (шанс пропорционален ставке) и забирает весь банк.
+// Ставка списывается сразу, выигрыш приходит через почтовый ящик (inbox) после окончания вращения. Состояние хранится в M.wheel (сохраняется в Upstash вместе с маркетом).
+const W_WAIT=15000,W_SPIN=7000,W_SHOW=6000,W_MAX=5,W_MIN=1;
+function wGet(){if(!M.wheel||typeof M.wheel!=="object"||!Array.isArray(M.wheel.bets)){M.wheel={n:(M.wheel&&M.wheel.n)|0||1,ph:"idle",bets:[],q:0,hist:[]}}if(!Array.isArray(M.wheel.hist))M.wheel.hist=[];return M.wheel}
+function wReset(R){R.n++;R.ph="idle";R.bets=[];R.q=0;delete R.t0;delete R.se;delete R.th;delete R.win;mdirty=true}
+function wStep(now){
+  const R=wGet();
+  if(R.ph==="wait"&&now>=R.t0){
+    const pot=R.bets.reduce((a,b)=>a+b.amt,0),th=crypto.randomInt(0,3600000)/10000;
+    let c=0,win=R.bets.length-1;
+    for(let i=0;i<R.bets.length;i++){c+=R.bets[i].amt/pot*360;if(th<c){win=i;break}}
+    R.ph="spin";R.th=th;R.win=win;R.se=now+W_SPIN;mdirty=true;
+  }
+  if(R.ph==="spin"&&now>=R.se){
+    const pot=R.bets.reduce((a,b)=>a+b.amt,0),w=R.bets[R.win];
+    boxPush(w.id,{k:"ww"+R.n,t:"wwin",amt:pot/100});
+    R.hist.push({name:w.name,amt:pot/100,n:R.bets.length});if(R.hist.length>10)R.hist.splice(0,R.hist.length-10);
+    R.ph="done";mdirty=dirty=true;
+  }
+  if(R.ph==="done"&&now>=R.se+W_SHOW)wReset(R);
+}
+setInterval(()=>{if(ready)try{wStep(Date.now())}catch(e){console.error("wheel:",e.message)}},300);
+function wView(id,now){
+  const R=wGet(),spun=R.ph==="spin"||R.ph==="done";
+  return{n:R.n,ph:R.ph,tl:R.ph==="wait"?Math.max(0,R.t0-now):0,sl:R.ph==="spin"?Math.max(0,R.se-now):0,
+    th:spun?R.th:undefined,win:spun?R.win:undefined,max:W_MAX,min:W_MIN,wait:W_WAIT/1000,
+    bets:R.bets.map(b=>({name:b.name,amt:b.amt/100,me:b.id===id})),
+    hist:R.hist.slice(-6).reverse().map(h=>({name:h.name,amt:h.amt,n:h.n}))};
+}
+function wState(b){
+  const id=mAuth(b);if(!id)return null;
+  const now=Date.now();wStep(now);
+  return{ok:1,inbox:boxOf(id),w:wView(id,now)};
+}
+function wBet(b){
+  const id=mAuth(b);if(!id)return null;const me=P[id],now=Date.now();
+  wStep(now);let R=wGet();
+  if(R.ph==="done"){wReset(R)}
+  if(R.ph==="spin")return{ok:0,err:"spin",inbox:boxOf(id),w:wView(id,now)};
+  const cents=Math.floor(Number(b.amt)*100+1e-6);
+  if(!(cents>=W_MIN*100&&cents<=1e9))return{ok:0,err:"amt",inbox:boxOf(id),w:wView(id,now)};
+  let mine=R.bets.find(x=>x.id===id);
+  if(!mine&&R.bets.length>=W_MAX)return{ok:0,err:"full",inbox:boxOf(id),w:wView(id,now)};
+  clampBal(me,Number(b.bal),now);
+  if(me.bal*100<cents-1e-6)return{ok:0,err:"bal",inbox:boxOf(id),w:wView(id,now)};
+  me.bal-=cents/100;
+  if(mine){mine.amt+=cents;mine.name=clean(me.name)}else R.bets.push({id,name:clean(me.name),amt:cents});
+  if(R.ph==="idle"){R.ph="wait";R.t0=now+W_WAIT}
+  boxPush(id,{k:"wb"+R.n+"_"+(++R.q),t:"wbet",cost:cents/100});
+  mdirty=dirty=true;
+  return{ok:1,inbox:boxOf(id),w:wView(id,now)};
+}
+const MROUTES={"/api/promo":mPromo,"/api/market/lots":mLots,"/api/market/list":mList,"/api/market/buy":mBuy,"/api/market/cancel":mCancel,"/api/wheel/state":wState,"/api/wheel/bet":wBet};
 function verify(init){
   try{
     const p=new URLSearchParams(init),hash=p.get("hash");p.delete("hash");

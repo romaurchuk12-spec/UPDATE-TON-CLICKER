@@ -245,6 +245,21 @@ nav button{font-size:10px!important;min-width:0;padding-left:0;padding-right:0;l
 .seg{overflow-x:auto;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}.seg button{flex:1 0 auto;white-space:nowrap;padding:8px 12px}
 .onl-h{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--tx2);margin:2px 4px 10px}
 .pcr{display:flex;gap:8px;padding:10px 12px}.pcr input{flex:1;min-width:0;padding:11px 13px;font:inherit;font-size:16px;color:var(--tx);background:var(--bg2);border:2px solid transparent;border-radius:12px;outline:0}.pcr input:focus{border-color:var(--ac)}
+/* ===== УЛУЧШЕНИЯ → ОНЛАЙН ИГРЫ ===== */
+.btwh{position:relative;width:min(70vw,272px);aspect-ratio:1;margin:46px auto 16px}
+.cst2{display:flex;justify-content:center;gap:8px;margin:0 0 4px}.cst2 button{border:0;background:#232d3b;color:#8a97a8;padding:9px 20px;border-radius:18px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}.cst2 button.on{background:#0098ea;color:#fff}
+.bts{position:absolute;inset:0;width:100%;height:100%;overflow:visible;will-change:transform}
+.btp{position:absolute;left:50%;top:-12px;transform:translateX(-50%);width:0;height:0;border:12px solid transparent;border-top:20px solid #fff;z-index:3;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.btcc{position:absolute;left:11.33%;top:11.33%;width:77.33%;height:77.33%;border-radius:50%;background:radial-gradient(circle at 50% 35%,#2c3745,#1d2631);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:2px;z-index:2;box-shadow:inset 0 0 0 2px #2f3b4b}
+.btcc span{font-size:12.5px;color:#9aa7b8;font-weight:600}.btcc b{font-size:28px;font-weight:800;color:#fff;line-height:1.1}.btcc b.sm{font-size:15px;line-height:1.25}.btcc b.g{color:#5be08a}
+.btlist{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.btr{display:flex;align-items:center;gap:9px;background:#232d3b;border-radius:12px;padding:10px 12px;font-size:14px}
+.btr i{width:12px;height:12px;border-radius:50%;flex:none}.btr .nm{flex:1;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.btr em{font-style:normal;color:#4cb8f5;font-weight:600}
+.btr .am{font-weight:700;color:#fff}.btr .pc{color:#9aa7b8;min-width:48px;text-align:right}.btr.win{outline:2px solid #34c46a;background:#1f3a2f}
+.btempty{text-align:center;color:#7c8696;font-size:13px;padding:12px 8px;line-height:1.4}
+.btin{margin:0 0 12px}.btin input{width:100%;box-sizing:border-box;background:#232d3b;border:2px solid #2f3b4b;border-radius:14px;padding:13px 14px;font:inherit;font-size:17px;font-weight:700;color:#fff;outline:none}.btin input:focus{border-color:#1d9be8}
+.btq{display:flex;gap:8px;margin-top:8px}.btq button{flex:1;border:0;border-radius:12px;padding:9px 0;background:#2a3544;color:#cfe3f5;font:inherit;font-size:14px;font-weight:700;cursor:pointer}.btq button:active{transform:scale(.96)}
+.btnote{text-align:center;color:#9aa7b8;font-size:12.5px;min-height:18px;margin:8px 4px 0;line-height:1.35}
 </style>
 </head>
 <body>
@@ -787,6 +802,8 @@ function applyBox(a){
  for(const x of a){
   if(!x||!x.k||S.mkd.includes(x.k))continue;
   if(x.t==="promo"){const m=Math.max(0,Number(x.amt)||0);S.bal+=m;sold+=m;msg="Промокод активирован: +"+fmt(m,2)+" TON";S.mkd.push(x.k);ch=true;continue}
+  if(x.t==="wbet"){const c=Math.max(0,Number(x.cost)||0);S.bal=Math.max(0,S.bal-c);S.mkd.push(x.k);ch=true;continue}
+  if(x.t==="wwin"){const m=Math.max(0,Number(x.amt)||0);S.bal+=m;sold+=m;msg="🎉 Выигрыш в колесе: +"+fmt(m,2)+" TON";S.mkd.push(x.k);ch=true;continue}
   const n=get(x.g);if(!n)continue;
   const sn=Math.floor(Number(x.sn));if(!(sn>=1))continue;
   if(x.t==="sold"){const m=Math.max(0,Number(x.amt)||0);S.bal+=m;sold+=m;soldN++;msg="Продан «"+n.n+"» №"+sn+": +"+fmt(m,2)+" TON"}
@@ -798,7 +815,7 @@ function applyBox(a){
  if(!ch)return;
  S.mkd=S.mkd.slice(-80);
  if(soldN>1)msg="Продано лотов: "+soldN+" · +"+fmt(sold,2)+" TON";
- save();render();toast(msg);
+ save();render();if(msg)toast(msg);
 }
 async function loadLots(){
  if(LOTSBUSY)return;LOTSBUSY=true;
@@ -892,7 +909,7 @@ async function mkCancel(k){
 var UG={stake:null,target:null,list:0,busy:false,rot:0,tab:"up",arc:null};
 /* начало зелёной полоски шанса (градусы по часовой от верха): случайное, пока не поменяли подарок или цель */
 function ugArc(){if(UG.arc==null)UG.arc=Math.random()*360;return UG.arc}
-const UG_TABS=[{id:"up",n:"Апгрейд"},{id:"craft",n:"Крафт"}];
+const UG_TABS=[{id:"up",n:"Апгрейд"},{id:"craft",n:"Крафт"},{id:"bet",n:"Онлайн игры"}];
 const UGR=131,UGC=2*Math.PI*UGR;
 const UGU={};
 function ugImg(id){return IMGP[id]||IMG[id]||""}
@@ -912,6 +929,7 @@ function ugCalc(){
 }
 function ugHTML(){
  if(UG.tab==="craft")return crHTML();
+ if(UG.tab==="bet")return btHTML();
  UG.rot=0;
  const c=ugCalc(),s=ugStake(),t=UG.target?get(UG.target):null;
  const len=c?c.ch/100*UGC:0;
@@ -939,7 +957,9 @@ function ugHTML(){
 function renderUp(){
  if(!UG||UG.busy||tab!==6)return;
  const e=$("#up");if(!e)return;
+ if(UG.tab==="bet"&&$("#btw")){btPaint();return}
  e.innerHTML=ugHTML();
+ if(UG.tab==="bet"){btPaint();btPoll()}
 }
 /* живое обновление цен и шанса (цены на маркете плавают) */
 function ugLive(){
@@ -1113,6 +1133,99 @@ $("#up").addEventListener("click",e=>{
   if(a==="slot"){toast("Выберите подарок ниже");crPaint();return}
   if(a==="go")crRun();
 });
+/* ===== УЛУЧШЕНИЯ → ОНЛАЙН ИГРЫ ===== */
+/* общее колесо для всех игроков: первая ставка запускает таймер, потом колесо крутится на сервере, победитель забирает весь банк */
+const BTC=["#ef5350","#34c46a","#25a8f2","#ffc64a","#b57bff"],BTR=117,BTL=2*Math.PI*BTR;
+var BT={w:null,tEnd:0,spun:0,rot:0,busy:false,pend:false,err:false,sk:"",lp:0};
+function btHTML(){
+ BT.w=null;BT.spun=0;BT.rot=0;BT.sk="";
+ return `<div class="cst">${UG_TABS.map(x=>`<button class="${UG.tab===x.id?"on":""}" data-ug="tab" data-k="${x.id}">${x.n}</button>`).join("")}</div><div class="cst2"><button class="on" data-bt="sub" data-k="wheel">Колесо фортуны</button></div><div id="btw"><div class="btwh"><div class="btp"></div><svg id="bts" class="bts" viewBox="0 0 300 300"></svg><div class="btcc" id="btc"></div></div>
+ <div class="btlist" id="btl"></div>
+ <div class="btin"><input id="bti" type="number" inputmode="decimal" min="1" step="any" placeholder="Сумма ставки, TON"></div>
+ <button class="ugo" id="btb" data-bt="go">Поставить</button><div class="btnote" id="btn"></div>
+ <h3>Последние победители</h3><div class="btlist" id="bth"></div></div>`;
+}
+function btMine(w){return w?w.bets.findIndex(b=>b.me):-1}
+function btPaint(){
+ if(!$("#btw"))return;
+ const w=BT.w,bets=w?w.bets:[],pot=bets.reduce((a,b)=>a+b.amt,0),now=Date.now();
+ const sk=JSON.stringify(bets.map(b=>b.amt));
+ if(sk!==BT.sk){
+  BT.sk=sk;let h=`<circle cx="150" cy="150" r="${BTR}" fill="none" stroke="#243447" stroke-width="30"/>`,st=0;
+  if(pot>0)bets.forEach((b,i)=>{const len=b.amt/pot*BTL;h+=`<circle cx="150" cy="150" r="${BTR}" fill="none" stroke="${BTC[i%5]}" stroke-width="30" stroke-dasharray="${Math.max(0,len-(bets.length>1?2.5:0)).toFixed(2)} ${BTL.toFixed(2)}" transform="rotate(${(st/pot*360-90).toFixed(2)} 150 150)"/>`;st+=b.amt});
+  $("#bts").innerHTML=h;
+ }
+ const ph=w?w.ph:"load";let c;
+ if(ph==="load")c=BT.err?'<span>Нет связи<br>с сервером</span>':'<span>Загрузка…</span>';
+ else if(ph==="idle")c='<span>Колесо ждёт</span><b class="sm">Сделайте<br>первую ставку</b>';
+ else if(ph==="wait")c=`<span>Банк</span><b>${fmt(pot,2)}</b><span>TON · ⏱ ${Math.max(0,Math.ceil((BT.tEnd-now)/1000))} с</span>`;
+ else if(ph==="spin")c=`<span>Банк</span><b>${fmt(pot,2)}</b><span>TON · крутим…</span>`;
+ else{const wn=bets[w.win];c=wn?`<span>🏆 ${esc(wn.name)}</span><b class="${wn.me?"g":""}">+${fmt(pot,2)}</b><span>TON</span>`:""}
+ $("#btc").innerHTML=c;
+ const L=$("#btl");
+ L.innerHTML=bets.length?bets.map((b,i)=>`<div class="btr${ph==="done"&&w.win===i?" win":""}"><i style="background:${BTC[i%5]}"></i><span class="nm">${esc(b.name)}${b.me?' <em>(вы)</em>':""}</span><span class="am">${fmt(b.amt,2)} TON</span><span class="pc">${fmt(b.amt/pot*100,1)}%</span></div>`).join(""):'<div class="btempty">Ставок пока нет. Первая ставка запускает 15-секундный таймер, ставить могут до 5 игроков.</div>';
+ const H=$("#bth"),hs=w?w.hist:[];
+ H.innerHTML=hs.length?hs.map(x=>`<div class="btr"><i style="background:#8a97a8"></i><span class="nm">🏆 ${esc(x.name)}</span><span class="am">+${fmt(x.amt,2)} TON</span><span class="pc">из ${x.n}</span></div>`).join(""):'<div class="btempty">Пока нет розыгрышей</div>';
+ /* кнопка и подсказка */
+ const b=$("#btb"),nt=$("#btn"),v=Math.floor(parseFloat($("#bti").value)*100)/100,mi=btMine(w),min=w?w.min:1,max=w?w.max:5;
+ let txt="Поставить",off=false,note="";
+ if(!w){txt="Загрузка…";off=true}
+ else if(ph==="spin"||ph==="done"){txt=ph==="spin"?"Идёт розыгрыш…":"Раунд завершён";off=true;note="Новый раунд начнётся, когда колесо остановится."}
+ else if(mi<0&&bets.length>=max){txt="Все 5 мест заняты";off=true}
+ else if(!(v>=min)){txt=mi>=0?"Добавить к ставке":"Поставить";off=true;note="Минимальная ставка "+min+" TON."}
+ else if(v>Math.floor(S.bal*100)/100){txt="Не хватает TON";off=true}
+ else txt=(mi>=0?"Добавить ":"Поставить ")+fmt(v,2)+" TON";
+ if(!off&&w&&ph==="wait")note="";
+ if(mi>=0&&ph==="wait")note="Ваш шанс сейчас: "+fmt(bets[mi].amt/pot*100,1)+"%. Можно увеличить ставку, пока идёт таймер.";
+ if(BT.err)note="Нет связи с сервером.";
+ b.textContent=txt;b.classList.toggle("off",off||BT.busy);nt.textContent=note;
+}
+function btApply(w){
+ const prev=BT.w;BT.w=w;BT.tEnd=Date.now()+(w.tl||0);
+ const s=$("#bts");
+ if(s){
+  if((w.ph==="spin"||w.ph==="done")&&BT.spun!==w.n){
+   BT.spun=w.n;const cur=BT.rot,delta=(((-(cur+w.th))%360)+360)%360;
+   BT.rot=cur+360*6+delta;
+   s.style.transition=w.ph==="spin"&&w.sl>1500?"transform "+w.sl+"ms cubic-bezier(.08,.7,.12,1)":"none";
+   void s.getBoundingClientRect();s.style.transform="rotate("+BT.rot+"deg)";
+  }else if((w.ph==="idle"||w.ph==="wait")&&BT.rot!==0){s.style.transition="none";s.style.transform="rotate(0deg)";BT.rot=0}
+ }
+ if(prev&&prev.ph==="spin"&&w.ph==="done"&&w.bets[w.win]&&w.bets[w.win].me){try{stars()}catch(e){}}
+ btPaint();
+}
+async function btPoll(){
+ if(BT.pend||tab!==6||UG.tab!=="bet"||document.hidden||!$("#btw"))return;
+ BT.pend=true;BT.lp=Date.now();
+ try{const j=await mkApi("",{},"/api/wheel/state");if(!j.ok||!j.w)throw 0;BT.err=false;btApply(j.w)}catch(e){BT.err=true;btPaint()}
+ BT.pend=false;
+}
+setInterval(btPoll,1000);
+setInterval(()=>{
+ if(tab!==6||UG.tab!=="bet"||!$("#btw"))return;
+ btPaint();
+ if(BT.w&&BT.w.ph==="wait"&&Date.now()>=BT.tEnd-150&&Date.now()-BT.lp>400)btPoll();
+},250);
+async function btBet(){
+ if(BT.busy)return;
+ const v=Math.floor(parseFloat($("#bti").value)*100)/100;
+ if(!(v>=1)){toast("Минимальная ставка 1 TON");return}
+ if(v>Math.floor(S.bal*100)/100){toast("Не хватает TON");return}
+ BT.busy=true;btPaint();
+ try{
+  const j=await mkApi("",{amt:v,bal:S.bal},"/api/wheel/bet");
+  if(j.w)btApply(j.w);
+  if(j.ok){$("#bti").value="";toast("Ставка принята: "+fmt(v,2)+" TON")}
+  else toast({spin:"Розыгрыш уже идёт, дождитесь следующего раунда",full:"Уже 5 ставок в этом раунде",bal:"Не хватает TON",amt:"Минимальная ставка 1 TON"}[j.err]||"Ставка не принята");
+ }catch(e){toast("Нет связи с сервером")}
+ BT.busy=false;btPaint();
+}
+$("#up").addEventListener("click",e=>{
+ const b=e.target.closest("[data-bt]");if(!b)return;
+ const a=b.dataset.bt,i=$("#bti");
+ if(a==="go")btBet();
+});
+$("#up").addEventListener("input",e=>{if(e.target.id==="bti")btPaint()});
 setInterval(save,3000);
 addEventListener("pagehide",save);
 sync();
